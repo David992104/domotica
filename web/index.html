@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0"
+        crossorigin="anonymous"></script>
+    <style>
+        body {
+            margin: 2rem;
+            text-align: center;
+        }
+    </style>
+    <title>Tu casa</title>
+</head>
+
+<body>
+    <div id="casa">
+        <h1>Elementos de la casa</h1>
+        <div>
+            <table class="table">
+                <tr>
+                    <th>#</th>
+                    <th>Componente</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+                <tr v-for="(objeto, i) in objetosCasa" :key="objeto.key">
+                    <td>{{i+1}}</td>
+                    <td>{{objeto.data.elemento}}</td>
+
+                    <td v-if="!objeto.data.sensor">
+                        <div v-if="objeto.data.status">Encendido</div>
+                        <div v-else>Apagado</div>
+                    </td>
+                    <td v-else>
+                        <div v-if="objeto.data.status">
+                            {{objeto.data.dato}} {{objeto.data.umedida}}
+                        </div>
+                        <div v-else>
+                            -- ?
+                        </div>
+                    </td>
+                    <td v-if="!objeto.data.sensor"> 
+                        <button @click="updateDato(objeto.key, true)" type="button" class="btn btn-outline-success">Encender</button>
+                        <button @click="updateDato(objeto.key, false)" type="button" class="btn btn-outline-danger">Apagar</button>
+                    </td>
+                    <td v-else>
+                        <div v-if="objeto.data.status" style="background-color: green;">
+                            Funcionando
+                        </div>
+                        <div v-else style="background-color: red;">
+                            No esta funcionando
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.2.10/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.2.10/firebase-analytics.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.2.10/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuefire@2.2.5/dist/vuefire.js"></script>
+    <script>
+        var firebaseConfig = {
+            apiKey: "AIzaSyAogVFKlfMmL_sBW-xrpEUaTMJgtET5Ngc",
+            authDomain: "domotica-6e4a0.firebaseapp.com",
+            databaseURL: "https://domotica-6e4a0-default-rtdb.firebaseio.com",
+            projectId: "domotica-6e4a0",
+            storageBucket: "domotica-6e4a0.appspot.com",
+            messagingSenderId: "266723360493",
+            appId: "1:266723360493:web:396e4f870d36ba0aca56e4",
+            measurementId: "G-7ELET79G9Q"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        firebase.analytics();
+        var casaRef = firebase.database().ref("/casa");
+
+        var vm = new Vue({
+            el: "#casa",
+            data: {
+                key: "pr",
+                elemento: "a",
+                status: true,
+                objetosCasa: []
+
+            },
+            methods:{
+                updateDato(id, status){
+                    var nuevoDato = casaRef.child(id)
+                    nuevoDato.update({
+                        "status" : status
+                    })
+                }
+            }
+        })
+
+        casaRef.on('value', function (snapshot) {
+            vm.objetosCasa = [];
+            snapshot.forEach(function (childSnapshot) {
+                vm.objetosCasa.push({
+                    key: childSnapshot.key,
+                    // elemento: childSnapshot.val().elemento,
+                    // status: childSnapshot.val().status
+                    data: childSnapshot.val()
+                })
+            })
+            // for (var i = 0; i < vm.objetosCasa.length; i++) {
+            //     console.log(vm.objetosCasa[i].elemento)
+            // }
+        })
+        
+    </script>
+</body>
+
+</html>

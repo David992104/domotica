@@ -1,35 +1,46 @@
 #include <WiFi.h>
 #include <Espalexa.h>
 #include <PubSubClient.h>
-Espalexa alexa;
+//#include <Ultrasonic.h>
+#include "NewPing.h"  
 
-const char* ssid = "Totalplay-60A5";
-const char* password = "60A538FCm3yWgW58"; 
-
-const char* mqtt_server = "192.168.100.10";
-
-WiFiClient espClient;
-PubSubClient client(espClient);
-long lastMsg = 0;
-char msg[50];
-int value = 0;
-
-//const char* ssid = "SANTEL-KING";
-//const char* password = "0240Alfsanchivis"; 
+//Pines ultrasonico
+#define trigger 13
+#define echo 14
 
 #define ledWifi 15
 #define focoSala 2
 #define lamparaSala 4
+
+Espalexa alexa;
+WiFiClient espClient;
+PubSubClient client(espClient);
+//Ultrasonic ultrasonic(trigger, echo);
+
+NewPing sonar(trigger, echo);
+
+
+const char* ssid = "Totalplay-60A5";
+const char* password = "60A538FCm3yWgW58"; 
+
+//const char* mqtt_server = "192.168.100.10";
+//const char* mqtt_server = "192.168.1.69";
+const char* mqtt_server = "192.168.100.15";
+
+
+
+//const char* ssid = "SANTEL-KING";
+//const char* password = "0240Alfsanchivis"; 
 
 void device1(uint8_t brightness);
 void device2(uint8_t brightness);
 
 void devFunc1(uint8_t brightness);
 
-String nameDevice1 = "Foco sala";
-String nameDevice2 = "Lampara sala";
+String nameDevice1 = "Foco";
+String nameDevice2 = "Lampara";
 
-String nameDevFunc1 = "Iluminacion sala" ;
+String nameDevFunc1 = "Iluminacion" ;
 
 boolean estaConectado(){
   boolean estado = false;
@@ -67,6 +78,28 @@ void conectarWifi(){
     Serial.println(WiFi.localIP());
 }
 
+float distanciaAnt = 0;
+float distanciaNew = 1;
+
+float getDistancia(){ 
+//    Serial.println("Leyendo " + ultrasonic.read(CM));
+    
+  //  return ultrasonic.read(CM);
+
+   float distance = sonar.ping_median() /100;
+    //int dis = (int) distnace/100;
+    //Serial.println(dis);
+    return distance;
+}
+
+void publicarDistancia(){
+  char dis[4];
+  dtostrf(distanciaAnt, 0, 0, dis);
+  //Serial.println(dis);
+  
+  client.publish("casa/tinaco/nivel", dis);
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(ledWifi, OUTPUT);
@@ -87,40 +120,41 @@ void setup() {
 }
 
 void loop() {
- if (!estaConectado() || !client.connected()){
- Serial.println("Reconectando ...");
- conectarWifi();
- reconnect();
+ distanciaNew = getDistancia();
+  if (distanciaAnt != distanciaNew){
+    publicarDistancia();
+    //Serial.println(distanciaNew);
+    distanciaAnt = distanciaNew;
+  }
+ /*if (!estaConectado()){
+  Serial.println("Reconectando ...");
+  conectarWifi();
+ }else if (!client.connected()){
+  Serial.println("Reconectando con el servidor...");
+  reconnect();
  }else{
+*/
   alexa.loop();
   delay(1);
 
   client.loop();
-  //long now = millis();
-  //if (now - lastMsg > 2000) {
-    //lastMsg = now;
-    //++value;
-    //snprintf (msg, 75, "hello world #%ld", value);
-    //Serial.print("Publish message: ");
-    //Serial.println(msg);
-    //client.publish("casa/sala", msg);
-  //}
-  
- }
+
+ //}
+ 
 }
 
 void callback(char* topic, byte* payload, unsigned int length){
   String rama = String(topic);
   
   Serial.print("Mensaje nuevo: ");
-  Serial.println(rama);
+  Serial.print(rama);
   String accion;
   for (int i = 0; i < length; i++){
     accion += (char) payload[i];
     //Serial.print((char)payload[i]);
   }
   Serial.println(accion);
-  Serial.println(length);
+  //Serial.println(length);
 
   if (rama == "casa/sala/"){
     //device1(((accion == "on") ? 255 : 0));
@@ -163,10 +197,13 @@ void reconnect(){
     if (client.connect("esp32")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("casa/comedor", "Enviadno desde ESP");
+      //client.publish("casa/comedor", "Enviadno desde ESP");
       // ... and resubscribe
       client.subscribe("casa/sala/#");
-      client.subscribe("casa/sala/focoSala");
+      //client.subscribe("casa/sala/focoSala");
+      //client.subscribe("casa/sala/lamparaSala");
+      //client.subscribe("casa/tinaco/nivel");
+      
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
